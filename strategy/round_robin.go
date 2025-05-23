@@ -24,7 +24,7 @@ func (rr *RoundRobin) Next(p *server.Pool) server.Server {
 		return nil
 	}
 
-	for i := 0; i < n; i++ {
+	for range n {
 		s := servers[rr.counter%n]
 		rr.counter = (rr.counter + 1) % n
 		if s.IsAlive() {

@@ -1,44 +1,50 @@
 # Golang HTTP Load Balancer
 
-This is a modular, production-style HTTP Load Balancer built in **Go**, designed for learning and extensibility. It distributes incoming HTTP requests across multiple backend servers using a **Round Robin** strategy by default.
+This is a modular, production-style HTTP Load Balancer built in **Go**, designed for learning and extensibility. It distributes incoming HTTP requests across multiple backend servers using customizable strategies.
 
 ## 🚀 Features
 
-- 🔁 Round Robin request distribution strategy
+- 🔁 Round Robin and Weighted Round Robin strategies
 - 🧱 Clean modular structure: server logic, pooling, and strategies are separated
 - ✅ Thread-safe design using sync primitives
 - 🔌 Real request forwarding using `httputil.ReverseProxy`
 - 📦 Easily pluggable strategy architecture (Least Connections, IP Hash, etc.)
+- 🧪 Unit-tested strategies with realistic scenarios using `httptest`
 
 ## 📁 Project Structure
 
 ```
-loadbalancer/
-├── main.go                    # Entry point of the application
+go-loadbalancer/
+├── main.go                      # Entry point of the application
 ├── server/
-│   ├── server.go              # Backend server representation and proxy logic
-│   └── pool.go                # Server pool manager
+│   ├── server.go                # BackendServer and WeightedBackendServer definitions
+│   └── pool.go                  # Server pool manager
 ├── strategy/
-│   └── round_robin.go         # Round Robin load balancing strategy
+│   ├── round_robin.go           # Round Robin strategy
+│   ├── weighted_round_robin.go  # Weighted Round Robin strategy
+│   ├── round_robin_test.go      # Unit tests for Round Robin
+│   └── weighted_round_robin_test.go # Unit tests for Weighted Round Robin
 ```
 
 ## 🧠 Components Overview
 
 ### `server/`
-- **Server interface**: Defines the basic contract for backend servers.
-- **BackendServer**: Implements reverse proxying, connection tracking, and health status.
-- **Pool**: Manages the set of backend servers with thread safety.
+- **Server interface**: Defines the abstraction used by all load balancing strategies.
+- **BackendServer**: A basic HTTP reverse proxy backend.
+- **WeightedBackendServer**: Adds weight and current weight tracking for WRR.
+- **Pool**: Thread-safe list of servers with add/get helpers.
 
 ### `strategy/`
-- **RoundRobin**: Selects the next live server in a circular fashion.
-- Future strategies like **Least Connections**, **IP Hashing** can be added easily.
+- **RoundRobin**: Naive loop-based selection with `IsAlive()` check.
+- **WeightedRoundRobin**: Smooth WRR implementation with dynamic weight balancing.
+- Test cases cover single server, all-down, weight ratios, and edge conditions.
 
 ## ▶️ Getting Started
 
 1. Clone the repository:
    ```bash
    git clone https://github.com/AtaAksoy/go-loadbalancer.git
-   cd golang-loadbalancer
+   cd go-loadbalancer
    ```
 
 2. Add your backend servers to the `main.go` file:
@@ -46,6 +52,7 @@ loadbalancer/
    targets := []string{
        "http://localhost:8081",
        "http://localhost:8082",
+       "http://localhost:8083",
    }
    ```
 
@@ -56,17 +63,33 @@ loadbalancer/
 
 4. Send requests to:
    ```
-   http://localhost:8080
+   http://localhost:8080/      # Round Robin
+   http://localhost:8080/wrr   # Weighted Round Robin
    ```
+
+## 🧪 Running Tests
+
+To run all unit tests for Round Robin and Weighted Round Robin strategies:
+
+```bash
+go test ./strategy -v
+```
+
+### Sample Test Output
+
+```
+=== RUN   TestWeightedRoundRobin_Distribution
+    weighted_round_robin_test.go:51: Request distribution:
+        Backend 1: 50
+        Backend 2: 30
+        Backend 3: 20
+```
 
 ## 📌 Notes
 
-- Backend servers must be running and return valid HTTP responses.
-- This project is intended as a learning tool and can be expanded for production use with features like:
-  - Health checks
-  - Retry policies
-  - Request logging
-  - HTTPS support
+- All backends must respond with valid HTTP responses.
+- Weighted strategies must only work with `WeightedBackendServer`.
+- The `Next()` methods ensure servers are alive before selection.
 
 ## 📄 License
 

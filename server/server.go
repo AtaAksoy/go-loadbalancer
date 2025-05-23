@@ -24,6 +24,12 @@ type BackendServer struct {
 	reverseProxy *httputil.ReverseProxy
 }
 
+type WeightedBackendServer struct {
+	*BackendServer
+	Weight        int
+	CurrentWeight int
+}
+
 func NewBackendServer(target string) (*BackendServer, error) {
 	urlParsed, err := url.Parse(target)
 	if err != nil {
@@ -33,6 +39,18 @@ func NewBackendServer(target string) (*BackendServer, error) {
 		URL:          urlParsed,
 		alive:        true,
 		reverseProxy: httputil.NewSingleHostReverseProxy(urlParsed),
+	}, nil
+}
+
+func NewWeightedBackendServer(target string, weight int) (*WeightedBackendServer, error) {
+	base, err := NewBackendServer(target)
+	if err != nil {
+		return nil, err
+	}
+	return &WeightedBackendServer{
+		BackendServer: base,
+		Weight:        weight,
+		CurrentWeight: 0,
 	}, nil
 }
 

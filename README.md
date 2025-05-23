@@ -4,40 +4,42 @@ This is a modular, production-style HTTP Load Balancer built in **Go**, designed
 
 ## 🚀 Features
 
-- 🔁 Round Robin and Weighted Round Robin strategies
+- 🔁 Round Robin, Weighted Round Robin, and Least Connections strategies
 - 🧱 Clean modular structure: server logic, pooling, and strategies are separated
-- ✅ Thread-safe design using sync primitives
+- ✅ Thread-safe design using `sync.Mutex` and `sync.RWMutex`
 - 🔌 Real request forwarding using `httputil.ReverseProxy`
-- 📦 Easily pluggable strategy architecture (Least Connections, IP Hash, etc.)
-- 🧪 Unit-tested strategies with realistic scenarios using `httptest`
+- 🧪 Realistic, concurrency-aware unit tests using `httptest` and `goroutines`
+- 📦 Easily extensible strategy layer for future additions (e.g., IP Hashing, Health Checks)
 
 ## 📁 Project Structure
 
 ```
 go-loadbalancer/
-├── main.go                      # Entry point of the application
+├── main.go                         # Entry point of the application
 ├── server/
-│   ├── server.go                # BackendServer and WeightedBackendServer definitions
-│   └── pool.go                  # Server pool manager
+│   ├── server.go                   # BackendServer and WeightedBackendServer definitions
+│   └── pool.go                     # Server pool manager
 ├── strategy/
-│   ├── round_robin.go           # Round Robin strategy
-│   ├── weighted_round_robin.go  # Weighted Round Robin strategy
-│   ├── round_robin_test.go      # Unit tests for Round Robin
-│   └── weighted_round_robin_test.go # Unit tests for Weighted Round Robin
+│   ├── round_robin.go              # Round Robin strategy
+│   ├── weighted_round_robin.go     # Weighted Round Robin strategy
+│   ├── least_connection.go         # Least Connection strategy
+│   ├── round_robin_test.go         # Unit tests for Round Robin
+│   ├── weighted_round_robin_test.go # Unit tests for Weighted Round Robin
+│   └── least_connection_test.go    # Unit tests for Least Connection
 ```
 
 ## 🧠 Components Overview
 
 ### `server/`
-- **Server interface**: Defines the abstraction used by all load balancing strategies.
-- **BackendServer**: A basic HTTP reverse proxy backend.
-- **WeightedBackendServer**: Adds weight and current weight tracking for WRR.
-- **Pool**: Thread-safe list of servers with add/get helpers.
+- **Server interface**: Defines the abstraction used by all strategies.
+- **BackendServer**: Basic reverse proxy logic with connection counting.
+- **WeightedBackendServer**: Adds weight/current weight tracking for WRR.
+- **Pool**: Stores a set of backend servers in a thread-safe list.
 
 ### `strategy/`
-- **RoundRobin**: Naive loop-based selection with `IsAlive()` check.
-- **WeightedRoundRobin**: Smooth WRR implementation with dynamic weight balancing.
-- Test cases cover single server, all-down, weight ratios, and edge conditions.
+- **RoundRobin**: Rotates through live servers in sequence.
+- **WeightedRoundRobin**: Prioritizes servers based on configured weights, using smooth WRR logic.
+- **LeastConnection**: Selects the server with the fewest active connections in real-time.
 
 ## ▶️ Getting Started
 
@@ -63,14 +65,14 @@ go-loadbalancer/
 
 4. Send requests to:
    ```
-   http://localhost:8080/      # Round Robin
-   http://localhost:8080/wrr   # Weighted Round Robin
+   http://localhost:8080/       # Round Robin
+   http://localhost:8080/wrr    # Weighted Round Robin
+   http://localhost:8080/least  # Least Connection
    ```
 
 ## 🧪 Running Tests
 
-To run all unit tests for Round Robin and Weighted Round Robin strategies:
-
+Run all unit tests for all strategies:
 ```bash
 go test ./strategy -v
 ```
@@ -83,13 +85,16 @@ go test ./strategy -v
         Backend 1: 50
         Backend 2: 30
         Backend 3: 20
+
+=== RUN   TestLeastConnection_WithConcurrentServe
+    least_connection_test.go:72: Request distribution with concurrent Serve(): [32 31 27]
 ```
 
 ## 📌 Notes
 
-- All backends must respond with valid HTTP responses.
-- Weighted strategies must only work with `WeightedBackendServer`.
-- The `Next()` methods ensure servers are alive before selection.
+- Make sure backends are running and accessible before testing manually.
+- `Serve()` must be used in tests to correctly simulate active connections.
+- All strategies skip servers marked as down via `IsAlive()`.
 
 ## 📄 License
 
